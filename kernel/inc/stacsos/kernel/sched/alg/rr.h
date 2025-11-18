@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stacsos/kernel/sched/alg/scheduling-algorithm.h>
+#include <stacsos/list.h>
 
 namespace stacsos::kernel::sched::alg {
 
@@ -16,9 +17,18 @@ namespace stacsos::kernel::sched::alg {
 
 class round_robin : public scheduling_algorithm {
 public:
+	round_robin() : current_task{ false, nullptr } {}
 	virtual void add_to_runqueue(tcb &tcb) override;
 	virtual void remove_from_runqueue(tcb &tcb) override;
 	virtual tcb *select_next_task(tcb *current) override;
 	virtual const char *name() const { return "round robin"; }
+private:
+	list<tcb*> runqueue;
+
+	struct {
+		bool to_remove;
+		tcb* task;
+	} current_task;
+
 };
 } // namespace stacsos::kernel::sched::alg

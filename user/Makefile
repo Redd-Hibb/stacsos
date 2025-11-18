@@ -1,6 +1,6 @@
 this-dir := $(CURDIR)
 
-apps := init shell sched-test mandelbrot cat poweroff sched-test2
+apps := init shell sched-test mandelbrot cat poweroff sched-test2 ls
 
 app-dirs := $(foreach APP,$(apps),$(this-dir)/$(APP))
 export app-target-dir := $(out-dir)/rootfs/usr
@@ -9,7 +9,7 @@ build-targets := $(patsubst %,__build__%,$(app-dirs))
 BUILD-TARGET = $(patsubst __build__%,%,$@)
 
 clean-targets := $(patsubst %,__clean__%,$(app-dirs))
-CLEAN-TARGET = $(patsubst __clean__%,%,$@)
+CLEAN-TARGET = $(patsubst __clean'__%,%,$@)
 
 fs-target := __copy_sysroot
 

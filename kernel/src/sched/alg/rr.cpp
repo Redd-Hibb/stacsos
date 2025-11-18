@@ -15,8 +15,43 @@
 using namespace stacsos::kernel::sched;
 using namespace stacsos::kernel::sched::alg;
 
-void round_robin::add_to_runqueue(tcb &tcb) { panic("TODO"); }
+void round_robin::add_to_runqueue(tcb &tcb) {
 
-void round_robin::remove_from_runqueue(tcb &tcb) { panic("TODO"); }
+    runqueue.enqueue(&tcb);
+}
 
-tcb *round_robin::select_next_task(tcb *current) { panic("TODO"); }
+void round_robin::remove_from_runqueue(tcb &tcb) {
+
+    // if target is current task, wait for it to stop running to 
+    // avoid unclean interrupt
+    if (&tcb == current_task.task) {
+        current_task.to_remove = true;
+    }
+
+    else {
+		runqueue.remove(&tcb);
+	}
+}
+
+tcb* round_robin::select_next_task(tcb *current) {
+
+    //no need to manage multiple tasks if there's only one. (the runqueue is empty)
+    if (runqueue.empty()) {
+
+        if (current_task.to_remove) {
+            current_task.task = nullptr;
+            current_task.to_remove = false;
+        }
+
+        return current_task.task;
+    }
+
+    //dont enqueue the last task if it was set to be removed
+    if (!current_task.to_remove && current_task.task != nullptr) {
+        runqueue.enqueue(current_task.task);
+    }
+
+    current_task.to_remove = false;
+    current_task.task = runqueue.pop();
+    return current_task.task;
+}
