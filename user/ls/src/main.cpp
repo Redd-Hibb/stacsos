@@ -55,10 +55,10 @@ int main(const char *cmdline)
     
     // if syscall failed, print error
     if (!directory) {
-        console::get().writef("error: unable to open file %s for listing\n", cmdline);
+        console::get().writef("error: unable to open directory %s for listing\n", cmdline);
     }
 
-    // separate files and directories
+    // separate files and directories so they can be printed seperatley
     list<dirent> directories;
     list<dirent> files;
 

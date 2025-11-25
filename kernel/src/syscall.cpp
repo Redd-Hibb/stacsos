@@ -9,6 +9,7 @@
 #include <stacsos/kernel/arch/x86/pio.h>
 #include <stacsos/kernel/debug.h>
 #include <stacsos/kernel/fs/vfs.h>
+#include <stacsos/kernel/fs/fs-node.h>
 #include <stacsos/kernel/mem/address-space.h>
 #include <stacsos/kernel/obj/object-manager.h>
 #include <stacsos/kernel/obj/object.h>
@@ -60,7 +61,7 @@ static syscall_result do_opendir(process &owner, const char *path)
 
 	// attempt to open directory
 	auto directory = node->opendir();
-	if (!directory) {
+	if (!directory || node->kind() != fs_node_kind::directory) {
 		return syscall_result { syscall_result_code::not_supported, 0 };
 	}
 
