@@ -48,6 +48,19 @@ public:
 		return register_object(owner, new file_object(allocate_id(owner), file));
 	}
 
+	/**
+	 * @brief create a directory object and add it to the object table.
+	 * 
+	 * @param owner of the directory
+	 * @param directory the instance of the directory class (in file.h) that the object will point to.
+	 *
+	 * @return a shared pointer (to manage the pointers lifetime) that points to the object.
+	 */
+	shared_ptr<object> create_directory_object(sched::process &owner, shared_ptr<fs::directory> directory)
+	{
+		return register_object(owner, new directory_object(allocate_id(owner), directory));
+	}
+
 	shared_ptr<object> create_process_object(sched::process &owner, shared_ptr<sched::process> proc)
 	{
 		return register_object(owner, new process_object(allocate_id(owner), proc));

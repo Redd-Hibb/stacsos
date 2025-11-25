@@ -9,6 +9,7 @@
 #include <stacsos/kernel/dev/storage/block-device.h>
 #include <stacsos/kernel/fs/fat.h>
 #include <stacsos/memops.h>
+#include <stacsos/dirent.h>
 
 using namespace stacsos;
 using namespace stacsos::kernel::fs;
@@ -307,3 +308,69 @@ size_t fat_file::pread(void *buffer, size_t offset, size_t length)
 }
 
 size_t fat_file::pwrite(const void *buffer, size_t offset, size_t length) { return 0; }
+
+/**
+ * @brief get the next entry in the directory and copy its metadata into the buffer.
+ *        data is copied in the form of the dirent struct in stacsos/dirent
+ * 
+ * @param buffer dirents will be written to this.
+ * @param length size of buffer
+ *
+ * @return number of bytes written
+ */
+size_t fat_directory::readdir(void * buffer, size_t length) {
+
+	// stop if all files already been read
+	if (cur_file_ >= children_.count()) {
+		return 0;
+	}
+
+	// determine max number of files that can be copied into buffer
+    const size_t max_entries = length / sizeof(dirent);
+    const size_t files_remaining = children_.count() - cur_file_;
+    const size_t n_to_copy = (max_entries < files_remaining)
+						  ? max_entries : files_remaining;
+	
+	// cast dirent as entries so it can be broken with entries[i]
+	dirent* entries = static_cast<dirent*>(buffer);
+
+	// for each space for a dirent (limited by files left), copy one into the buffer
+    for (size_t i = 0; i < n_to_copy; i++) {
+        copy_dirent(&entries[i], cur_file_);
+        cur_file_++;
+		
+    }
+
+	// return number entries written
+	return n_to_copy;
+}
+
+/**
+ * @brief copy directory entry info into a buffer (in form of dirent struct)
+ *        buffer must be in the form dirent*
+ *
+ * @param entry the buffer in the form of dirent* 
+ * @param file_index within this directory. This information will be copied
+ *
+ * @return the buffer with newly copied data
+ */
+dirent* fat_directory::copy_dirent(dirent *entry, u64 file_index) {
+
+	// get the node in the directory at the given index
+	fat_node *child = children_.at(file_index);
+	const string &name = child->name();
+
+	// ensure entry name is small enough to fit in buffer (including \0)
+	size_t cpy_len = (name.length() < (entry->name_length - 1))
+					? name.length() : (entry->name_length - 1);
+
+	// copy entry name into the dirent's name members
+	memops::memcpy(entry->name, name.c_str(), cpy_len);
+	entry->name[cpy_len] = '\0';
+
+	// set remaining dirent members
+	entry->type = fs_node_kind_to_file_type(child->kind());
+	entry->size = child->data_size();
+
+	return entry;
+}

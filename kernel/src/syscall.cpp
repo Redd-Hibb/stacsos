@@ -42,6 +42,32 @@ static syscall_result do_open(process &owner, const char *path)
 	return syscall_result { syscall_result_code::ok, file_object->id() };
 }
 
+/**
+ * @brief creates a directory object in the the object manager.
+ *        uses fs node to get directory information.
+ *
+ * @param owner of directory.
+ * @param path full path of directory.
+ * @return syscall result code and object id as assigned by object manager
+ */
+static syscall_result do_opendir(process &owner, const char *path)
+{
+	// get fs node
+	auto node = vfs::get().lookup(path);
+	if (node == nullptr) {
+		return syscall_result { syscall_result_code::not_found, 0 };
+	}
+
+	// attempt to open directory
+	auto directory = node->opendir();
+	if (!directory) {
+		return syscall_result { syscall_result_code::not_supported, 0 };
+	}
+
+	// create directory object in object manager
+	auto directory_object = object_manager::get().create_directory_object(owner, directory);
+	return syscall_result { syscall_result_code::ok, directory_object->id() };
+}
 static syscall_result operation_result_to_syscall_result(operation_result &&o)
 {
 	syscall_result_code rc = (syscall_result_code)o.code;
@@ -70,6 +96,23 @@ extern "C" syscall_result handle_syscall(syscall_numbers index, u64 arg0, u64 ar
 
 	case syscall_numbers::open:
 		return do_open(current_process, (const char *)arg0);
+
+	// creates a directory object with the object manager.
+	case syscall_numbers::opendir: {
+		return do_opendir(current_process, (const char *)arg0);
+	}
+
+	// get object by id with object manager (using args from the syscall)
+	case syscall_numbers::readdir: {
+
+		// object should be of type directory_object from calling opendir previously.
+		auto o = object_manager::get().get_object(current_process, arg0);
+		if (!o) {
+			return syscall_result { syscall_result_code::not_found, 0 };
+		}
+
+		return operation_result_to_syscall_result(o->readdir((void *)arg1, arg2));
+	}
 
 	case syscall_numbers::close:
 		object_manager::get().free_object(current_process, arg0);

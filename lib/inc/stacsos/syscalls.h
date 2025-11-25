@@ -28,7 +28,11 @@ enum class syscall_numbers {
 	join_thread = 14,
 	sleep = 15,
 	poweroff = 16,
-	ioctl = 17
+	ioctl = 17,
+	
+	// new ids for new syscalls.
+	readdir = 18,
+	opendir = 19,
 };
 
 struct syscall_result {

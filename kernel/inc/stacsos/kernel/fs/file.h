@@ -7,6 +7,9 @@
  */
 #pragma once
 
+#include <stacsos/dirent.h>
+#include <stacsos/kernel/fs/fs-node.h>
+
 namespace stacsos::kernel::fs {
 class filesystem;
 class file {
@@ -54,4 +57,41 @@ private:
 	u64 size_;
 	u64 cur_offset_;
 };
-} // namespace stacsos::kernel::fs
+// an abstract class part of the VFS, for a File System Driver to override.
+// kernel calls methods from the VFS, not the FSD, so the FSD can easily be switched out.
+class directory {
+public:
+	// leave how directory entries are stored up to the FSD
+	directory()
+		: cur_file_(0)
+	{
+	}
+
+	// to be overriden with the functional implementation of readdir (listing files).
+	virtual size_t readdir(void *buffer, size_t length) = 0;
+
+protected:
+
+	/**
+	 * @brief helper function that makes convertig between directory entry type
+	          between kernel defined types and those defined in stacsos/dirent.h
+	 *
+	 * @param kind the fs_node_kind enum to be converted
+	 *
+	 * @return file_type enum that dirent.h uses
+	 */
+	file_type fs_node_kind_to_file_type(fs_node_kind kind) {
+
+		switch (kind) {
+			case fs_node_kind::file:
+				return file_type::file;
+			case fs_node_kind::directory:
+				return file_type::directory;
+		}
+	}
+
+
+	// standardise a file index for storing current place in directory.
+	u64 cur_file_;
+}; // namespace stacsos::kernel::fs
+}

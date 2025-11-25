@@ -16,6 +16,8 @@
 namespace stacsos::kernel::fs {
 class fat_filesystem;
 class fat_file;
+class fat_directory;
+class fat_node;
 
 class fat_file : public file {
 public:
@@ -41,6 +43,31 @@ private:
 	u64 nr_clusters_;
 };
 
+// implements the directory class in file.h
+class fat_directory : public directory {
+friend class fat_node;
+
+public:
+	// take a list of this directory's entries
+	fat_directory(list<fat_node*> &children)
+		: directory()
+		, children_(children)
+	{
+	}
+
+	virtual ~fat_directory() { }
+
+	virtual size_t readdir(void *buffer, size_t length);
+
+private:
+	
+	// helper function for readdir
+	virtual dirent* copy_dirent(dirent* entry, u64 index);
+
+	// list of directories entries
+	list<fat_node *> &children_;
+};
+
 class fat_node : public fs_node {
 	friend class fat_filesystem;
 
@@ -56,8 +83,18 @@ public:
 
 	virtual ~fat_node() { }
 
-	virtual shared_ptr<file> open() override { return shared_ptr<file>(new fat_file((fat_filesystem &)fs(), cluster_, data_size_)); }
+	virtual shared_ptr<file> open() override { return shared_ptr<file>(new fat_file((fat_filesystem &)fs(), cluster_, data_size_)); }	
+	virtual shared_ptr<directory> opendir() override 
+	{ 
+		// load fat_node so its children can be passed to the directory class
+		load();
+
+		return shared_ptr<directory>(new fat_directory(children_)); 
+	}
 	virtual fs_node *mkdir(const char *name) override;
+
+	// fat_directory needs access to the data_size_
+	virtual u64 data_size() { return data_size_; }
 
 protected:
 	virtual fs_node *resolve_child(const string &name) override;
@@ -70,6 +107,7 @@ private:
 	bool loaded_;
 	list<fat_node *> children_;
 };
+
 
 class fat_filesystem : public physical_filesystem {
 	friend class fat_node;

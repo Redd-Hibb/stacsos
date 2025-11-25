@@ -33,6 +33,10 @@ public:
 	virtual operation_result pread(void *buffer, size_t length, size_t offset) { return operation_result::not_supported(); }
 	virtual operation_result write(const void *buffer, size_t length) { return operation_result::not_supported(); }
 	virtual operation_result pwrite(const void *buffer, size_t length, size_t offset) { return operation_result::not_supported(); }
+
+	// virtual function to be inherrited by the directory_object class.
+	virtual operation_result readdir(void *buffer, size_t length) { return operation_result::not_supported(); }
+
 	virtual operation_result ioctl(u64 cmd, void *buffer, size_t length) { return operation_result::not_supported(); }
 	virtual operation_result wait_for_status_change() { return operation_result::not_supported(); }
 	virtual operation_result join() { return operation_result::not_supported(); }
@@ -63,6 +67,23 @@ public:
 
 private:
 	shared_ptr<fs::file> file_;
+};
+
+// an abstraction that makes the directory class compatible with the object manager
+class directory_object : public object {
+public:
+	// just the object id and instace of directory.
+	directory_object(u64 id, shared_ptr<fs::directory> directory)
+		: object(id)
+		, directory_(directory)
+	{
+	}
+
+	// calls the readdir function of the directory.
+	virtual operation_result readdir(void *buffer, size_t length) {return operation_result::ok(directory_->readdir(buffer, length));  }
+
+private:
+	shared_ptr<fs::directory> directory_;
 };
 
 class process_object : public object {

@@ -16,6 +16,7 @@ enum class fs_node_kind { file, directory };
 
 class filesystem;
 class file;
+class directory;
 
 class fs_node {
 public:
@@ -40,6 +41,10 @@ public:
 	const string &name() const { return name_; }
 
 	virtual shared_ptr<file> open() = 0;
+
+	// is nullpointer as directory functionality is optional
+	virtual shared_ptr<directory> opendir() { return nullptr;};
+
 	virtual fs_node *mkdir(const char *name) = 0;
 
 protected:

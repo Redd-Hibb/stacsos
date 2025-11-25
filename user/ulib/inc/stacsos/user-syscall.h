@@ -38,11 +38,36 @@ public:
 		return fa_result { r.code, r.data };
 	}
 
+	/** @brief passes control to kernel and calls the opendir syscall.
+	 *  
+	 *  @param path full path of directory
+	 *  @return syscall result code and id of object created by object manager
+	 */
+	static fa_result opendir(const char *path)
+	{
+		auto r = syscall1(syscall_numbers::opendir, (u64)path);
+		return fa_result { r.code, r.data };
+	}
+
 	static syscall_result_code close(u64 id) { return syscall1(syscall_numbers::close, id).code; }
 
 	static rw_result read(u64 object, void *buffer, u64 length)
 	{
 		auto r = syscall3(syscall_numbers::read, object, (u64)buffer, length);
+		return rw_result { r.code, r.data };
+	}
+
+	/**
+	 *  @brief passes control to kernel and calls the readdir syscall.
+	 *
+	 *  @param length length of buffer
+	 *  @param buffer will be written to with dirent struct (stacsos/dirent.h)
+	 *  @param object object id (as set by object manager)
+	 *  @return syscall result code (code) and number of dirents written to buffer (data)
+	 */
+	static rw_result readdir(u64 object, void *buffer, u64 length)
+	{
+		auto r = syscall3(syscall_numbers::readdir, object, (u64)buffer, length);
 		return rw_result { r.code, r.data };
 	}
 
