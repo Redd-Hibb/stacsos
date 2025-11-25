@@ -14,11 +14,20 @@ using namespace stacsos;
 using namespace stacsos::kernel;
 using namespace stacsos::kernel::mem;
 
-#define UNIT64_MAX 18446744073709551615
+// Represents the contents of a free page, that can hold useful metadata.
+struct page_metadata {
+	page *next_free;
+};
 
-//////////////////////
-// Public functions //
-//////////////////////
+/**
+ * @brief Returns a pointer to the metadata structure that is held within a free page.  This CANNOT be used on
+ * pages that have been allocated, as they are owned by the requesting code.  Once pages have been freed, or
+ * are being returned to the allocator, this metadata can be used.
+ *
+ * @param page The page on which to retrieve the metadata struct.
+ * @return page_metadata* The metadata structure.
+ */
+static inline page_metadata *metadata(page *page) { return (page_metadata *)page->base_address_ptr(); }
 
 /**
  * @brief Dumps out (via the debugging routines) the current state of the buddy page allocator's free lists
@@ -45,7 +54,7 @@ void page_allocator_buddy::dump() const
 
 			// Advance to the next page, by interpreting the free page as holding metadata, and reading
 			// the appropriate field.
-			current_free_page = ((page_metadata *)(current_free_page->base_address_ptr()))->next_free;
+			current_free_page = ((page_metadata *)current_free_page->base_address_ptr())->next_free;
 		}
 
 		// New line for the next order.
@@ -270,10 +279,10 @@ void page_allocator_buddy::split_block(int order, page &block_start) {
 }
 
 /**
- * @brief inserts a free block into the buddy allocator.
+ * @brief Inserts a block of pages into the free list for the given order. inserts a free block into the buddy allocator.
  *
- * @param order int.
- * @param block_start base page of block to insert
+ * @param order The order in which to insert the free blocks.
+ * @param block_start The starting page of the block to be inserted.
  */
 void page_allocator_buddy::insert_free_block(int order, page &block_start) {
 
@@ -350,53 +359,89 @@ void page_allocator_buddy::remove_buddies(int order, page &block_start) {
 page** page_allocator_buddy::get_slot(int order, page &block_start)
 {
 	// assert order in range
-	assert(order >= 0 && order <= LastOrder && "Order out of range for inserting free block");
+	assert(order >= 0 && order <= LastOrder);
 
-	// assert block_start aligned to order
+	// Assert that the starting page in the block is aligned to the requested order.
 	assert(block_aligned(order, block_start.pfn()));
+
 	page *target = &block_start;
 	page **slot = &free_list_[order];
 	while (*slot && *slot < target) {
 		// slot = &((*slot)->next_free_);
-		slot = &(get_next_free(*slot));
+		slot = &((page_metadata *)((*slot)->base_address_ptr()))->next_free;
 	}
 
+	// Make sure the block wasn't already in the free list.
 	assert(*slot != target);
 
-	return slot;
+	((page_metadata *)target->base_address_ptr())->next_free = *slot;
+	*slot = target;
 }
 
 /**
- * @brief gets the block metadata that points to the chosen block.
- * is used for deletion, so that the previous block can be linked to the one after.
+ * @brief
  *
- * @param order
- * @param block_start
+ * @param order The order in which to remove a free block.
+ * @param block_start The starting page of the block to be removed.
  */
 page** page_allocator_buddy::get_candidate_slot(int order, page &block_start)
 {
-	// assert order in range
+	// Assert that the given order is in the range of orders we support.
 	assert(order >= 0 && order <= LastOrder);
 
-	// assert block_start aligned to order
+	// Assert that the starting page in the block is aligned to the requested order.
 	assert(block_aligned(order, block_start.pfn()));
 
+	// Loop through the free list for the given order, until we find the
+	// block to remove.
 	page *target = &block_start;
 	page **candidate_slot = &free_list_[order];
 	while (*candidate_slot && *candidate_slot != target) {
-		candidate_slot = &(get_next_free(*candidate_slot)); // &((*candidate_slot)->next_free_);
+		candidate_slot = &((page_metadata *)(*candidate_slot)->base_address_ptr())->next_free; // &((*candidate_slot)->next_free_);
 	}
 
-	// assert candidate block exists
+	// Assert that the candidate block actually exists, i.e. the requested
+	// block really was in the free list for the order.
 	assert(*candidate_slot == target);
 
-	return candidate_slot;
+	*candidate_slot = ((page_metadata *)target->base_address_ptr())->next_free;
+	((page_metadata *)target->base_address_ptr())->next_free = nullptr;
+
+	// target->next_free_ = nullptr;
 }
 
-//TODO: make sure that logical opperators are my choice
+/**
+ * @brief
+ *
+ * ** You are required to implement this function **
+ * @param order
+ * @param block_start
+ */
+void page_allocator_buddy::split_block(int order, page &block_start) { panic("TODO"); }
 
-//TODO: add in page states -  iterative functions for merging and splitting - a function that checks for a buddy. - decide on a standard for buddy parameters - maybe make itterative merging and splitting efficient - could change the list to unordered to better optimise insertion - O(1) instead of O(n), I wonder if there is also a way to make the merge O(1)
+/**
+ * @brief
+ *
+ * @param order
+ * @param buddy
+ */
+void page_allocator_buddy::merge_buddies(int order, page &buddy) { panic("TODO"); }
 
-//REPORT: recusion not good idea - when am I freeing buddies - why I wrote extra code for splitting and merging - merging on free keeps memory fragmentation low, also, all it needs is a buddy lookup - get next physical blocl is ajust a wee efficiency - chose to itterative split too - why merge now returns page pointer, not even friend needs it - avoided recursion for inserting pages - take through steps of design for the adding of pages
+/**
+ * @brief
+ *
+ * ** You are required to implement this function **
+ * @param order
+ * @param flags
+ * @return page*
+ */
+page *page_allocator_buddy::allocate_pages(int order, page_allocation_flags flags) { panic("TODO"); }
 
-//NEXT: go over and sort relations with header file, replace all occurances of metadata with function.
+/**
+ * @brief
+ *
+ * ** You are required to implement this function **
+ * @param block_start
+ * @param order
+ */
+void page_allocator_buddy::free_pages(page &block_start, int order) { panic("TODO"); }
