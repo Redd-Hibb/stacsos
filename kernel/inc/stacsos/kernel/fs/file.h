@@ -67,6 +67,8 @@ public:
 	{
 	}
 
+	virtual ~directory() {}
+
 	// to be overriden with the functional implementation of readdir (listing files).
 	virtual size_t readdir(void *buffer, size_t length) = 0;
 
