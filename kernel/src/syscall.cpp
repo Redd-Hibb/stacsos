@@ -55,13 +55,13 @@ static syscall_result do_opendir(process &owner, const char *path)
 {
 	// get fs node
 	auto node = vfs::get().lookup(path);
-	if (node == nullptr) {
+	if (node == nullptr || node->kind() != fs_node_kind::directory) {
 		return syscall_result { syscall_result_code::not_found, 0 };
 	}
 
 	// attempt to open directory
 	auto directory = node->opendir();
-	if (!directory || node->kind() != fs_node_kind::directory) {
+	if (!directory) {
 		return syscall_result { syscall_result_code::not_supported, 0 };
 	}
 
